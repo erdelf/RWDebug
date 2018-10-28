@@ -21,39 +21,55 @@ namespace Debug
         static Debug()
         {
             HarmonyInstance harmony = HarmonyInstance.Create(id: "rimworld.erdelf.debug");
+            harmony.Patch(AccessTools.Property(typeof(Name), nameof(Name.UsedThisGame)).GetGetMethod(), new HarmonyMethod(typeof(Debug), nameof(UsedPrefix)));
+            harmony.Patch(AccessTools.Method(typeof(NameUseChecker), nameof(NameUseChecker.NameWordIsUsed)), new HarmonyMethod(typeof(Debug), nameof(UsedPrefix)));
+            harmony.Patch(AccessTools.Property(typeof(NameUseChecker), nameof(NameUseChecker.AllPawnsNamesEverUsed)).GetGetMethod(), new HarmonyMethod(typeof(Debug), nameof(NamePrefix)));
+
             //HarmonyInstance.DEBUG = true;
-            
-            // Things/Pawn/Animal/Monkey/Monkey
 
-            
-            Type[] types = typeof(Pawn).Assembly.GetTypes().SelectMany(t => t.GetNestedTypes(AccessTools.all).Concat(t)).ToArray();
-            Log.Message($"{types.Length} types with {types.Sum(t => t.GetFields(AccessTools.all).Count(f => f.DeclaringType == t))} fields and {types.Sum(t => t.GetMethods(AccessTools.all).Count(m => m.DeclaringType == t))} methods.");
-        }
-
-        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-        {
-            FieldInfo defInfo = AccessTools.Field(type: typeof(Thing), name: nameof(Thing.def));
-
-            CodeInstruction[] codeInstructions = instructions as CodeInstruction[] ?? instructions.ToArray();
-            for (int index = 0; index < codeInstructions.Length; index++)
+            LongEventHandler.QueueLongEvent(() =>
             {
-                CodeInstruction instruction = codeInstructions[index];
-                if (instruction.opcode == OpCodes.Ldfld && instruction.operand == defInfo)
+
+
+                Current.Game = new Game
                 {
-                    index += 1;
-                    instruction = new CodeInstruction(opcode: OpCodes.Call, operand: AccessTools.Method(type: typeof(Debug), name: nameof(CreateRecipes)));
+                    World = new World
+                    {
+                        factionManager = new FactionManager(),
+                        worldPawns = new WorldPawns()
+                    },
+                    storyteller = new Storyteller(StorytellerDefOf.Cassandra, DifficultyDefOf.Rough)
+                };
+
+
+                Find.FactionManager.Add(FactionGenerator.NewGeneratedFaction(FactionDefOf.PlayerTribe));
+
+                FactionDefOf.PlayerColony.isPlayer = false;
+                FactionDefOf.PlayerColony.hidden   = true;
+                Faction faction = FactionGenerator.NewGeneratedFaction(FactionDefOf.PlayerColony);
+                Find.FactionManager.Add(faction);
+
+                FactionDefOf.PlayerColony.pawnNameMaker = RulePackDef.Named("NamerPersonTribal");
+
+                int i = 0;
+                for (int j = 0; j < 100000; j++)
+                {
+                    if (PawnGenerator.GeneratePawn(new PawnGenerationRequest(PawnKindDefOf.Villager, faction, forceGenerateNewPawn: true, canGeneratePawnRelations: false)).health.hediffSet
+                       .HasHediff(HediffDefOf.Gunshot))
+                        Log.Message($"Pawn with gunshots generated");
                 }
-                yield return instruction;
-            }
+            }, "GENERATING PAWNS", true, null);
+
         }
 
-        public static List<RecipeDef> CreateRecipes(Pawn p)
+        public static bool UsedPrefix() => false;
+
+        public static bool NamePrefix(ref IEnumerable<Name> __result)
         {
-            List<RecipeDef> recipes = p.def.AllRecipes;
+            __result = new[] {new NameSingle("erdelf"), new NameSingle("Mehni"), new NameSingle("Jecrell")};
 
-            return recipes;
+            return false;
         }
-
     }
 
 
