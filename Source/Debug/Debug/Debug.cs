@@ -41,18 +41,20 @@ namespace Debug
 
     public class DummyDef : ThingDef
     {
-        /*
+        
         public DummyDef() : base()
         {
-            Log.Message("dummyCheck");
-            HarmonyInstance.Create("rimworld.erdelf.dummy_checker").Patch(
-                AccessTools.Method(typeof(PawnKindDef), nameof(ThingDef.ConfigErrors)),
-                new HarmonyMethod(typeof(DummyDef), nameof(checkDefName)), null);
+            HarmonyInstance harmony = HarmonyInstance.Create("rimworld.erdelf.dummy_checker");
+            
+
+                harmony.Patch(AccessTools.Method(typeof(ModMetaData), "Init"), null,
+                    new HarmonyMethod(typeof(DummyDef), nameof(checkDefName)));
         }
 
-        public static void checkDefName(PawnKindDef __instance)
+
+        public static void checkDefName(ModMetaData __instance)
         {
-            Log.Message(__instance.defName + ": " + string.Join(" | ", __instance.weaponTags?.ToArray() ?? new string[] { "" }));
-        }*/
+            Log.Message(__instance.Name);
+        }
     }
 }
