@@ -21,48 +21,14 @@ namespace Debug
         static Debug()
         {
             HarmonyInstance harmony = HarmonyInstance.Create(id: "rimworld.erdelf.debug");
-            harmony.Patch(AccessTools.Property(typeof(Name), nameof(Name.UsedThisGame)).GetGetMethod(), new HarmonyMethod(typeof(Debug), nameof(UsedPrefix)));
-            harmony.Patch(AccessTools.Method(typeof(NameUseChecker), nameof(NameUseChecker.NameWordIsUsed)), new HarmonyMethod(typeof(Debug), nameof(UsedPrefix)));
-            harmony.Patch(AccessTools.Property(typeof(NameUseChecker), nameof(NameUseChecker.AllPawnsNamesEverUsed)).GetGetMethod(), new HarmonyMethod(typeof(Debug), nameof(NamePrefix)));
-
-            //HarmonyInstance.DEBUG = true;
-
-            LongEventHandler.QueueLongEvent(() =>
-            {
-
-
-                Current.Game = new Game
-                {
-                    World = new World
-                    {
-                        factionManager = new FactionManager(),
-                        worldPawns = new WorldPawns()
-                    },
-                    storyteller = new Storyteller(StorytellerDefOf.Cassandra, DifficultyDefOf.Rough)
-                };
-
-
-                Find.FactionManager.Add(FactionGenerator.NewGeneratedFaction(FactionDefOf.PlayerTribe));
-
-                FactionDefOf.PlayerColony.isPlayer = false;
-                FactionDefOf.PlayerColony.hidden   = true;
-                Faction faction = FactionGenerator.NewGeneratedFaction(FactionDefOf.PlayerColony);
-                Find.FactionManager.Add(faction);
-
-                FactionDefOf.PlayerColony.pawnNameMaker = RulePackDef.Named("NamerPersonTribal");
-
-                int i = 0;
-                for (int j = 0; j < 100000; j++)
-                {
-                    if (PawnGenerator.GeneratePawn(new PawnGenerationRequest(PawnKindDefOf.Villager, faction, forceGenerateNewPawn: true, canGeneratePawnRelations: false)).health.hediffSet
-                       .HasHediff(HediffDefOf.Gunshot))
-                        Log.Message($"Pawn with gunshots generated");
-                }
-            }, "GENERATING PAWNS", true, null);
+            harmony.Patch(AccessTools.Property(typeof(WorkGiverDef), nameof(WorkGiverDef.Worker)).GetGetMethod(), new HarmonyMethod(typeof(Debug), nameof(UsedPrefix)));
 
         }
 
-        public static bool UsedPrefix() => false;
+        public static void UsedPrefix(WorkGiverDef __instance)
+        {
+            Log.Message(__instance.defName + " " + __instance.modContentPack.Name, true);
+        }
 
         public static bool NamePrefix(ref IEnumerable<Name> __result)
         {
