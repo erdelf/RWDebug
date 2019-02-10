@@ -20,17 +20,23 @@ namespace Debug
     {
         static Debug()
         {
-            //HarmonyInstance harmony = HarmonyInstance.Create(id: "rimworld.erdelf.debug");
-            //harmony.Patch(AccessTools.Method(typeof(HediffMaker), nameof(HediffMaker.MakeHediff)), new HarmonyMethod(typeof(Debug), nameof(Prefix)));
-            typeof(MeshPool).GetField("humanlikeBodySet", BindingFlags.Public | BindingFlags.Static).SetValue(null, new GraphicMeshSet(0.75f));
-            typeof(MeshPool).GetField("humanlikeHeadSet", BindingFlags.Public | BindingFlags.Static).SetValue(null, new GraphicMeshSet(0.75f));
-            typeof(MeshPool).GetField("humanlikeHairSetAverage", BindingFlags.Public | BindingFlags.Static).SetValue(null, new GraphicMeshSet(0.75f));
-            typeof(MeshPool).GetField("humanlikeHairSetNarrow", BindingFlags.Public | BindingFlags.Static).SetValue(null, new GraphicMeshSet(0.9f, 0.75f));
+            HarmonyInstance harmony = HarmonyInstance.Create(id: "rimworld.erdelf.debug");
+            harmony.Patch(AccessTools.Method(typeof(HealthCardUtility), "DrawOverviewTab"), transpiler: new HarmonyMethod(typeof(Debug), nameof(Transpiler)));
+            
+        }
 
-            foreach (BodyTypeDef bodyTypeDef in DefDatabase<BodyTypeDef>.AllDefs)
-                bodyTypeDef.headOffset.y = 0.2f;
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            List<CodeInstruction> codeInstructions = instructions.ToList();
 
-            ThingDefOf.Human.label = "homo floresiensis";
+            MethodInfo labelFor = AccessTools.Method(typeof(PawnCapacityDef), nameof(PawnCapacityDef.GetLabelFor), new []{typeof(bool), typeof(bool)});
+
+            int index = codeInstructions.FindIndex(ci => ci.operand == labelFor);
+
+            codeInstructions[index].operand = AccessTools.Method(typeof(PawnCapacityDef), nameof(PawnCapacityDef.GetLabelFor), new[] {typeof(Pawn)});
+            codeInstructions.RemoveRange(index-6, 6);
+
+            return codeInstructions;
         }
     }
 
