@@ -36,13 +36,15 @@ namespace Debug
                     length[i] = sw.ElapsedTicks;
                 }
 
-                Log.Message($"{length.Average()}\t for {path} with {count} runs");
+                Log.Message($"avg: {length.Average()}\tmin: {length.Min()}\tmax: {length.Max()}\nfor {path} with {count} runs");
             }
-
+            testTime(@"/Defs/ThingDef", 1);
             testTime(@"Defs/ThingDef", 1);
             testTime(@"*/ThingDef",    1);
+            testTime(@"/Defs/ThingDef", 100);
             testTime(@"Defs/ThingDef", 100);
             testTime(@"*/ThingDef",    100);
+            testTime(@"/Defs/ThingDef", 1000);
             testTime(@"Defs/ThingDef", 1000);
             testTime(@"*/ThingDef",    1000);
         }
