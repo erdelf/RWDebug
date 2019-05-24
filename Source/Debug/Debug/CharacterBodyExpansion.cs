@@ -5,6 +5,7 @@ using Verse;
 
 namespace CharacterBodyExpansion
 {
+    using System.Linq;
     using System.Reflection;
     using System.Reflection.Emit;
 
@@ -20,6 +21,7 @@ namespace CharacterBodyExpansion
             foreach (BodyTypeDef def in DefDatabase<BodyTypeDef>.AllDefsListForReading)
             {
                 bodyInheritance.Add(def, new HashSet<BodyTypeDef>());
+                bodyInheritance[def].Add(def);
                 BodyDefApparelParentageInfo info = def.GetModExtension<BodyDefApparelParentageInfo>();
                 if (info != null)
                     bodyInheritance[info.parent].Add(def);
@@ -28,8 +30,14 @@ namespace CharacterBodyExpansion
 
         public static Dictionary<BodyTypeDef, HashSet<BodyTypeDef>> bodyInheritance = new Dictionary<BodyTypeDef, HashSet<BodyTypeDef>>();
 
-        public static void GenerateBodyTypePostfix(Pawn pawn) => 
-            pawn.story.bodyType = bodyInheritance[key: pawn.story.bodyType].RandomElement();
+        public static void GenerateBodyTypePostfix(Pawn pawn) =>
+            pawn.story.bodyType = bodyInheritance[key: pawn.story.bodyType].Where(predicate: bt =>
+                                                                                  {
+                                                                                      GenderPossibility gender = bt.GetModExtension<BodyDefApparelParentageInfo>()?.gender ?? GenderPossibility.Either;
+                                                                                      return gender == GenderPossibility.Either ||
+                                                                                             gender == GenderPossibility.Male && pawn.gender == Gender.Male ||
+                                                                                                gender == GenderPossibility.Female && pawn.gender == Gender.Female;
+                                                                                  }).RandomElement();
 
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
@@ -43,7 +51,6 @@ namespace CharacterBodyExpansion
                 else
                     yield return instruction;
             }
-
         }
 
         public static string GetApparelBodyDefname(Def def) => 
@@ -53,5 +60,6 @@ namespace CharacterBodyExpansion
     public class BodyDefApparelParentageInfo : DefModExtension
     {
         public BodyTypeDef parent;
+        public GenderPossibility gender;
     }
 }
