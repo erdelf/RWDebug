@@ -15,7 +15,21 @@ namespace CharacterBodyExpansion
         {
             HarmonyInstance harmony = HarmonyInstance.Create("rimworld.erdelf.CharacterBodyExpansion");
             harmony.Patch(AccessTools.Method(typeof(ApparelGraphicRecordGetter), nameof(ApparelGraphicRecordGetter.TryGetGraphicApparel)), transpiler: new HarmonyMethod(typeof(CharacterBodyExpansion), nameof(CharacterBodyExpansion.Transpiler)));
+            harmony.Patch(AccessTools.Method(typeof(PawnGenerator), "GenerateBodyType"), postfix: new HarmonyMethod(typeof(CharacterBodyExpansion), nameof(GenerateBodyTypePostfix)));
+
+            foreach (BodyTypeDef def in DefDatabase<BodyTypeDef>.AllDefsListForReading)
+            {
+                bodyInheritance.Add(def, new HashSet<BodyTypeDef>());
+                BodyDefApparelParentageInfo info = def.GetModExtension<BodyDefApparelParentageInfo>();
+                if (info != null)
+                    bodyInheritance[info.parent].Add(def);
+            }
         }
+
+        public static Dictionary<BodyTypeDef, HashSet<BodyTypeDef>> bodyInheritance = new Dictionary<BodyTypeDef, HashSet<BodyTypeDef>>();
+
+        public static void GenerateBodyTypePostfix(Pawn pawn) => 
+            pawn.story.bodyType = bodyInheritance[key: pawn.story.bodyType].RandomElement();
 
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
