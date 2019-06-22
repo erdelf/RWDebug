@@ -5,4 +5,40 @@
     <defName>dummy</defName>
     <label>dummy</label>
   </Debug.DummyDef>
+
+  <ThingDef ParentName="BuildingBase">
+    <defName>RWBY_CloneSandbags</defName>
+    <label>sandbagsCLONE</label>
+    <description>Bags of locally-sourced dirt or sand held in place by steel rods. Sandbags are ugly, but provide excellent cover from ranged attacks.</description>
+    <thingClass>Building</thingClass>
+    <category>Building</category>
+    <graphicData>
+      <texPath>Terrain/Scatter/GraySmearA</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+    </graphicData>
+    <uiIconColor>(139,122,87)</uiIconColor>
+    <altitudeLayer>Building</altitudeLayer>
+    <pathCost>40</pathCost>
+    <pathCostIgnoreRepeat>true</pathCostIgnoreRepeat>
+    <passability>PassThroughOnly</passability>
+    <castEdgeShadows>false</castEdgeShadows>
+    <fillPercent>0.65</fillPercent>
+    <canOverlapZones>false</canOverlapZones>
+    <statBases>
+      <MaxHitPoints>450</MaxHitPoints>
+      <Beauty>-10</Beauty>
+      <WorkToBuild>180</WorkToBuild>
+      <Flammability>0</Flammability>
+    </statBases>
+    <rotatable>false</rotatable>
+    <selectable>true</selectable>
+    <neverMultiSelect>true</neverMultiSelect>
+    <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
+    <staticSunShadowHeight>0.20</staticSunShadowHeight>
+    <comps>
+      <li>
+        <compClass>Debug.RWBY_CloneComp</compClass>
+      </li>
+    </comps>
+  </ThingDef>
 </Defs>
