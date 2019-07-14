@@ -5,8 +5,12 @@ using Verse;
 
 namespace Debug
 {
+    using System.Collections.Generic;
     using System.Linq;
+    using System.Reflection;
+    using System.Reflection.Emit;
     using JetBrains.Annotations;
+    using RimWorld.Planet;
     using UnityEngine;
 
     [StaticConstructorOnStartup]
@@ -14,92 +18,86 @@ namespace Debug
     {
         static Debug()
         {
-            
-        }
-    }
-
-    [UsedImplicitly]
-    public class RWBY_CloneComp : ThingComp
-    {
-        public delegate void Action<T1, T2, T3, T4, T5, T6, T7, T8>(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8);
-
-        private Rot4 rotation;
-
-        private PawnRenderer renderer;
-
-        private int disappearTick;
-
-        public override void Initialize(CompProperties props)
-        {
-            base.Initialize(props: props);
-
-            this.SetData(pawn: Find.CurrentMap.mapPawns.FreeColonists.RandomElement(), ticksToLive: GenDate.TicksPerHour, color: Color.red);
+            HarmonyInstance harmony = HarmonyInstance.Create("rimworld.erdelf.debug");
+            harmony.Patch(AccessTools.Method(typeof(Alert_Thought), "AffectedPawns"), prefix: new HarmonyMethod(typeof(Debug), nameof(prefix)));
+            HarmonyInstance.DEBUG = true;
+            harmony.Patch(AccessTools.Method(typeof(PlayerItemAccessibilityUtility), "CacheAccessibleThings"), transpiler: new HarmonyMethod(typeof(Debug), nameof(transpiler)));
+            HarmonyInstance.DEBUG = false;
         }
 
-        public void SetData(Pawn pawn, int ticksToLive, Color color)
+        public static void prefix(object __instance)
         {
-            Color colorTwo = color;
-            this.disappearTick = GenTicks.TicksGame + ticksToLive;
-            this.renderer = new PawnRenderer(pawn: pawn)
-                            {
-                                graphics =
-                                {
-                                    apparelGraphics = pawn.Drawer.renderer.graphics.apparelGraphics
-                                                       .Select(selector: apr =>
-                                                                             new
-                                                                                 ApparelGraphicRecord(graphic: apr.graphic.GetColoredVersion(newShader: apr.graphic.Shader, newColor: color, newColorTwo: colorTwo),
-                                                                                                      sourceApparel: apr.sourceApparel)).ToList(),
-                                    hairGraphic  = pawn.Drawer.renderer.graphics.hairGraphic,
-                                    headGraphic  = pawn.Drawer.renderer.graphics.headGraphic,
-                                    nakedGraphic = pawn.Drawer.renderer.graphics.nakedGraphic,
-                                }
-                            };
-
-            this.renderer.graphics.hairGraphic =
-                this.renderer.graphics.hairGraphic.GetColoredVersion(newShader: this.renderer.graphics.hairGraphic.Shader, newColor: color, newColorTwo: colorTwo);
-            this.renderer.graphics.headGraphic =
-                this.renderer.graphics.headGraphic.GetColoredVersion(newShader: this.renderer.graphics.headGraphic.Shader, newColor: color, newColorTwo: colorTwo);
-            this.renderer.graphics.nakedGraphic =
-                this.renderer.graphics.nakedGraphic.GetColoredVersion(newShader: this.renderer.graphics.nakedGraphic.Shader, newColor: color, newColorTwo: colorTwo);
-
-
-            this.rotation = pawn.Rotation;
-            this.set = Delegate.CreateDelegate(type: typeof(Action<Vector3, float, bool, Rot4, Rot4, RotDrawMode, bool, bool>),
-                                               firstArgument: this.renderer,
-                                               method: AccessTools.Method(type: typeof(PawnRenderer), name: "RenderPawnInternal",
-                                                                          parameters: new[]
-                                                                                      {
-                                                                                          typeof(Vector3), typeof(float), typeof(bool), typeof(Rot4),
-                                                                                          typeof(Rot4), typeof(RotDrawMode), typeof(bool), typeof(bool)
-                                                                                      }));
+            //Log.Message(__instance.GetType().FullName);
         }
 
-        private Delegate set;
-
-        public override void PostDraw()
+        public static IEnumerable<CodeInstruction> transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            base.PostDraw();
-            this.set.DynamicInvoke(this.parent.DrawPos, 0f, true, this.rotation, this.rotation, RotDrawMode.Fresh, false, false);
+            int i = -9;
 
-            if (GenTicks.TicksGame <= this.disappearTick) return;
-
-            Map     map = this.parent.Map;
-            Vector3 vec = this.parent.DrawPos;
-
-            for (int i = 0; i < 5; i++)
+            IEnumerable<CodeInstruction> PostLog(params CodeInstruction[] code)
             {
-                MoteMaker.ThrowSmoke(loc: vec, map: map, size: 5f     * Rand.Value);
-                MoteMaker.ThrowDustPuff(loc: vec, map: map, scale: 5f * Rand.Value);
-                MoteMaker.ThrowDustPuff(loc: vec, map: map, scale: 5f * Rand.Value);
+                string ld = string.Join(" | ", code.Select(c => c.ToString()).ToArray()) + "\n" + (i++).ToString();
+                if (i > 0)
+                {
+                    yield return new CodeInstruction(OpCodes.Ldstr, operand: ld);
+                    yield return new CodeInstruction(OpCodes.Ldc_I4_1);
+                    yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Log), nameof(Log.Message)));
+                    yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Log), nameof(Log.ResetMessageCount)));
+                }
             }
 
-            this.parent.Destroy();
+            List<CodeInstruction> instructionList = instructions.ToList();
+            int                   counter         = i;
+            for (int index = 0; index < instructionList.Count; index++)
+            {
+                CodeInstruction instruction = instructionList[index: index];
+
+                if ((instruction.opcode == OpCodes.Callvirt && instruction.operand is MethodInfo && (instruction.operand.ToString().Contains("get_Count") ||
+                                                                                                     instruction.operand.ToString().Contains("Clear")     ||
+                                                                                                     instruction.operand == AccessTools
+                                                                                                                        .Property(typeof(Pawn), nameof(Pawn.IsFreeColonist)).GetGetMethod() ||
+                                                                                                     instruction.operand ==
+                                                                                                     AccessTools.Property(typeof(Pawn), nameof(Pawn.Dead)).GetGetMethod() ||
+                                                                                                     instruction.operand == AccessTools
+                                                                                                                        .Property(typeof(Pawn), nameof(Pawn.Downed)).GetGetMethod() ||
+                                                                                                     instruction.operand ==
+                                                                                                     AccessTools.Method(typeof(Pawn_WorkSettings), nameof(Pawn_WorkSettings.WorkIsActive)))
+                    ) ||
+                    instruction.opcode == OpCodes.Ble)
+                {
+                    counter++;
+                    instructionList.InsertRange(index + 2, PostLog(instructionList[index - 1], instructionList[index]));
+
+                    if (instruction.operand == AccessTools.Method(typeof(Pawn_WorkSettings), nameof(Pawn_WorkSettings.WorkIsActive)))
+                        instructionList.InsertRange(index + 6 + 4, PostLog(instructionList[index + 6 + 3], instructionList[index + 6 + 4]));
+
+                    if (counter == 5)
+                    {
+                        instructionList.InsertRange(index + 8  + 4,  PostLog(instructionList[index + 8  + 4]));
+                        instructionList.InsertRange(index + 13 + 8,  PostLog(instructionList[index + 13 + 8]));
+                        instructionList.InsertRange(index + 15 + 12, PostLog(instructionList[index + 16 + 12]));
+                        instructionList.InsertRange(index + 18 + 16, PostLog(instructionList[index + 19 + 16]));
+                    }
+                }
+
+                yield return instruction;
+
+                if ((instruction.opcode == OpCodes.Stloc_S && instructionList[index-1].opcode == OpCodes.Isinst))
+                {
+                    yield return new CodeInstruction(new CodeInstruction(OpCodes.Ldloc_S, (byte)25));
+                    yield return new CodeInstruction(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Debug), nameof(CheckPawn))));
+                }
+            }
+        }
+
+        static void CheckPawn(Pawn pawn)
+        {
+            Log.Message($"{pawn != null} {pawn?.IsFreeColonist} {!pawn?.Dead} {!pawn?.Downed} {pawn?.workSettings?.WorkIsActive(WorkTypeDefOf.Crafting)} {pawn?.Name.ToStringFull}", true);
         }
     }
 
     public class DummyDef : ThingDef
     {
-
         public DummyDef() : base()
         {
             //HarmonyInstance harmony = HarmonyInstance.Create("rimworld.erdelf.dummy_checker");
