@@ -12,6 +12,7 @@ namespace Debug
     using System.Reflection.Emit;
     using JetBrains.Annotations;
     using RimWorld.Planet;
+    using TMPro;
     using UnityEngine;
     using Object = System.Object;
 
@@ -22,11 +23,22 @@ namespace Debug
         {
             // HarmonyInstance harmony = HarmonyInstance.Create("rimworld.erdelf.debug");
 
-            string   path   = Path.Combine(Path.Combine(LoadedModManager.RunningMods.First(mcp => mcp.assemblies.loadedAssemblies.Contains(typeof(Debug).Assembly)).RootDir, "Ressources"), "fonts");
-            Font font = AssetBundle.LoadFromFile(path).LoadAllAssets<Font>()[0];
 
-            Log.Message(font?.GetType()?.FullName);
-            Log.Message(font?.name);
+            string basePath = Path.Combine(LoadedModManager.RunningMods.First(mcp => mcp.assemblies.loadedAssemblies.Contains(typeof(Debug).Assembly)).RootDir, "Ressources");
+            Font font = AssetBundle.LoadFromFile(Path.Combine(basePath, "fonts")).LoadAllAssets<Font>()[0];
+
+            AssetBundle fontMesh = AssetBundle.LoadFromFile(Path.Combine(basePath, "fontsmesh"));
+
+            Material mat = fontMesh.LoadAllAssets<Material>()[0];
+            mat.mainTexture = fontMesh.LoadAllAssets<Texture>()[0];
+
+
+
+            TextMeshPro textMeshPro = WorldFeatureTextMesh_TextMeshPro.WorldTextPrefab.GetComponent<TextMeshPro>();
+            textMeshPro.font.material = mat;
+            textMeshPro.fontMaterial = mat;
+            textMeshPro.fontSharedMaterial = mat;
+            textMeshPro.SetMaterialDirty();
 
             foreach (GUIStyle fontStyle in Text.fontStyles.Concat(Text.textFieldStyles).Concat(Text.textAreaStyles))
             {
