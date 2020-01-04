@@ -1,8 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
-<Defs>
-  <Debug.DummyDef>
-    <thingClass>Thing</thingClass>
-    <defName>dummy</defName>
-    <label>dummy</label>
-  </Debug.DummyDef>
-</Defs>

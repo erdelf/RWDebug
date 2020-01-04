@@ -6,6 +6,7 @@ using Verse;
 namespace Debug
 {
     using System.Collections.Generic;
+    using System.ComponentModel;
     using System.IO;
     using System.Linq;
     using System.Reflection;
@@ -21,36 +22,18 @@ namespace Debug
     {
         static Debug()
         {
-            // HarmonyInstance harmony = HarmonyInstance.Create("rimworld.erdelf.debug");
-
-
-            string basePath = Path.Combine(LoadedModManager.RunningMods.First(mcp => mcp.assemblies.loadedAssemblies.Contains(typeof(Debug).Assembly)).RootDir, "Ressources");
-            Font font = AssetBundle.LoadFromFile(Path.Combine(basePath, "fonts")).LoadAllAssets<Font>()[0];
-
-            AssetBundle fontMesh = AssetBundle.LoadFromFile(Path.Combine(basePath, "fontsmesh"));
-
-            Material mat = fontMesh.LoadAllAssets<Material>()[0];
-            mat.mainTexture = fontMesh.LoadAllAssets<Texture>()[0];
+             HarmonyInstance harmony = HarmonyInstance.Create("rimworld.erdelf.debug");
 
 
 
-            TextMeshPro textMeshPro = WorldFeatureTextMesh_TextMeshPro.WorldTextPrefab.GetComponent<TextMeshPro>();
-            textMeshPro.font.material = mat;
-            textMeshPro.fontMaterial = mat;
-            textMeshPro.fontSharedMaterial = mat;
-            textMeshPro.SetMaterialDirty();
+             HarmonyInstance.DEBUG = true;
+            harmony.Patch(AccessTools.Property(typeof(Text), nameof(Text.Font)).GetSetMethod(), prefix: new HarmonyMethod(typeof(Debug), nameof(Prefix)));
 
-            foreach (GUIStyle fontStyle in Text.fontStyles.Concat(Text.textFieldStyles).Concat(Text.textAreaStyles))
-            {
-                fontStyle.font = font;
-            }
+        }
 
-            /*
-            harmony.Patch(AccessTools.Method(typeof(Alert_Thought), "AffectedPawns"), prefix: new HarmonyMethod(typeof(Debug), nameof(prefix)));
-            HarmonyInstance.DEBUG = true;
-            harmony.Patch(AccessTools.Method(typeof(PlayerItemAccessibilityUtility), "CacheAccessibleThings"), transpiler: new HarmonyMethod(typeof(Debug), nameof(transpiler)));
-            HarmonyInstance.DEBUG = false;
-            */
+        public static void Prefix(ref GameFont value)
+        {
+            value = GameFont.Medium;
         }
     }
 
