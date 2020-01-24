@@ -27,13 +27,32 @@ namespace Debug
 
 
              HarmonyInstance.DEBUG = true;
-            harmony.Patch(AccessTools.Property(typeof(Text), nameof(Text.Font)).GetSetMethod(), prefix: new HarmonyMethod(typeof(Debug), nameof(Prefix)));
+            harmony.Patch(AccessTools.Method(typeof(InspectGizmoGrid), nameof(InspectGizmoGrid.DrawInspectGizmoGridFor)), transpiler: new HarmonyMethod(typeof(Debug), nameof(Transpiler)));
 
         }
 
-        public static void Prefix(ref GameFont value)
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            value = GameFont.Medium;
+            List<CodeInstruction> instructionList = instructions.ToList();
+            MethodInfo clearInfo = AccessTools.Method(typeof(List<object>), nameof(List<object>.Clear));
+
+            for (int i = 0; i < instructionList.Count; i++)
+            { 
+                CodeInstruction instruction = instructionList[i];
+
+                yield return instruction;
+
+                if (instruction.opcode == OpCodes.Ldsfld && i > 0 && instructionList[i - 1].operand == clearInfo && instructionList[i+1].opcode == OpCodes.Call)
+                {
+                    yield return new CodeInstruction(OpCodes.Ldarg_0);
+                    yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Debug), nameof(GizmosCheck)));
+                }
+            }
+        }
+
+        public static List<Gizmo> GizmosCheck(List<Gizmo> gizmos, IEnumerable<object> selected)
+        {
+            return gizmos;
         }
     }
 
