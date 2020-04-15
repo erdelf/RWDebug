@@ -26,14 +26,18 @@ namespace Debug
 
 
              //HarmonyInstance.DEBUG = true;
-             harmony.Patch(AccessTools.Method(typeof(PawnApparelGenerator), "CanUsePair"), prefix: new HarmonyMethod(typeof(Debug), nameof(Debug.Prefix)));
+             harmony.Patch(AccessTools.Method(typeof(CompArt), nameof(CompArt.GenerateImageDescription)), prefix: new HarmonyMethod(typeof(Debug), nameof(Debug.Prefix)));
 
         }
 
-        public static void Prefix(ThingStuffPair pair, Pawn pawn)
+        public static bool Prefix(CompArt __instance, ref TaggedString __result)
         {
-            Log.Message($"{pair.thing?.defName ?? "NO DEF"} {pair.thing?.modContentPack.PackageId ?? "NO MOD"}\n{pair.stuff?.defName ?? "NO STUFF"} {pair.stuff?.modContentPack.PackageId ?? "NO MOD"}\n{pawn != null} {pawn?.Name?.ToStringFull ?? "NO NAME"} {pawn?.def?.label}", true);
-            Log.ResetMessageCount();
+            if (__instance.Title.EqualsIgnoreCase("Silence with Gartner"))
+            {
+                __result = new TaggedString("An engraving on this furniture illustrates Gustav Gartner trying to light a fire while covered in frost. The scene takes place inside a snow-covered hickory forest. The scene takes place on the outskirts of a town. This artwork refers to Gartner freezing to death on 15th of Aprimay, 5500.");
+                return false;
+            }
+            return true;
         }
     }
 
