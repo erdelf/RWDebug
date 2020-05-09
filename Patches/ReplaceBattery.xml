@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Patch>
+  <Operation Class="PatchOperationReplace">
+    <xpath>/Defs/ThingDef[thingClass="Building_Battery"]/thingClass</xpath>
+    <value>
+      <thingClass>CustomBatteryDrawer.Building_CustomBatteryDrawer</thingClass>
+    </value>
+  </Operation>
+</Patch>
