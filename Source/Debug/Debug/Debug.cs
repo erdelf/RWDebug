@@ -1,71 +1,63 @@
 ﻿using RimWorld;
 using System;
 using Verse;
-/*
+
 namespace Debug
 {
     using System.Collections;
     using System.Collections.Generic;
     using System.ComponentModel;
+    using System.Globalization;
     using System.IO;
     using System.Linq;
     using System.Reflection;
     using System.Reflection.Emit;
-    using System.Threading;
     using HarmonyLib;
-    using JetBrains.Annotations;
-    using RimWorld.Planet;
     using UnityEngine;
-    using Object = System.Object;
 
     [StaticConstructorOnStartup]
     public class Debug
     {
         static Debug()
         {
+            Log.Message("EVIL:\n" + string.Join("\n", DefDatabase<WorldObjectDef>.AllDefs.Where(def => def.Material == null).Select(def => def.modContentPack.Name + ": " + def.defName)));
+
             Harmony harmony = new Harmony("rimworld.erdelf.debug");
 
-
-
-            //HarmonyInstance.DEBUG = true;
-            harmony.Patch(AccessTools.Method(typeof(ThingDef), nameof(ThingDef.SpecialDisplayStats)), postfix: new HarmonyMethod(typeof(Debug), nameof(Debug.Postfix)));
+            //Harmony.DEBUG = true;
+            //harmony.Patch(AccessTools.Method(typeof(CharacterCardUtility), nameof(CharacterCardUtility.DrawCharacterCard)), transpiler: new HarmonyMethod(typeof(Debug), nameof(Debug.Transpiler)));
         }
 
-
-
-        public static IEnumerable<StatDrawEntry> Postfix(IEnumerable<StatDrawEntry> __result, ThingDef __instance, StatRequest req)
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator gen)
         {
-            Log.Error("Hello");
-            yield return new StatDrawEntry(StatCategoryDefOf.Apparel, "Covers".Translate(), "500", "Stat_Thing_Apparel_Covers_Desc".Translate(), 2750);
-        }
-
-        public static bool Prefix(CompArt __instance, ref TaggedString __result)
-        {
-            if (__instance.Title.EqualsIgnoreCase("Silence with Gartner"))
+            IEnumerable<CodeInstruction> codeInstructions = Transpiler2(instructions, gen);
+            foreach (CodeInstruction codeInstruction in codeInstructions)
             {
-                __result =
-                    new
-                        TaggedString("An engraving on this furniture illustrates Gustav Gartner trying to light a fire while covered in frost. The scene takes place inside a snow-covered hickory forest. The scene takes place on the outskirts of a town. This artwork refers to Gartner freezing to death on 15th of Aprimay, 5500.");
-                return false;
-            }
-
-            return true;
-        }
-
-        public class DummyDef : ThingDef
-        {
-            public DummyDef() : base()
-            {
-                //HarmonyInstance harmony = HarmonyInstance.Create("rimworld.erdelf.dummy_checker");
-                //harmony.Patch(AccessTools.Method(typeof(DefDatabase<ThingDef>), "AddAllInMods"), transpiler: new HarmonyMethod(typeof(Debug), nameof(Debug.Transpiler)));
-            }
-
-
-            public static void CheckDefName(ModMetaData __instance)
-            {
-                Log.Message(text: __instance.Name);
+                //Log.Message(codeInstruction.ToString());
+                Log.ResetMessageCount();
+                yield return codeInstruction;
             }
         }
     }
+
+    public class DummyDef : ThingDef
+    {
+        public DummyDef() : base()
+        {
+            //Log.Message("Patch");
+            Harmony harmony = new Harmony("rimworld.erdelf.dummy_checker");
+            //harmony.Patch(typeof(ThingDef).GetMethods(AccessTools.all).First(mi => mi.HasAttribute<CompilerGeneratedAttribute>() && mi.Name.Contains("PostLoad")), prefix: new HarmonyMethod(typeof(Debug), nameof(Debug.Prefix)));
+        }
+
+        public override void PostLoad()
+        {
+            base.PostLoad();
+        }
+
+
+        public static void CheckDefName(ModMetaData __instance)
+        {
+            Log.Message(text: __instance.Name);
+        }
+    }
 }
-*/
