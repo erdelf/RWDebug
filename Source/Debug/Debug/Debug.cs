@@ -13,6 +13,7 @@ namespace Debug
     using System.Reflection;
     using System.Reflection.Emit;
     using HarmonyLib;
+    using RimWorld.Planet;
     using UnityEngine;
 
     [StaticConstructorOnStartup]
@@ -20,23 +21,21 @@ namespace Debug
     {
         static Debug()
         {
-            Log.Message("EVIL:\n" + string.Join("\n", DefDatabase<WorldObjectDef>.AllDefs.Where(def => def.Material == null).Select(def => def.modContentPack.Name + ": " + def.defName)));
-
             Harmony harmony = new Harmony("rimworld.erdelf.debug");
 
+            foreach (WorldObjectDef worldObjectDef in DefDatabase<WorldObjectDef>.AllDefs.Where(wod => wod.texture.NullOrEmpty()))
+            {
+                worldObjectDef.texture = WorldObjectDefOf.RoutePlannerWaypoint.texture;
+            }
+
             //Harmony.DEBUG = true;
-            //harmony.Patch(AccessTools.Method(typeof(CharacterCardUtility), nameof(CharacterCardUtility.DrawCharacterCard)), transpiler: new HarmonyMethod(typeof(Debug), nameof(Debug.Transpiler)));
+            //harmony.Patch(AccessTools.PropertyGetter(typeof(Settlement), nameof(Settlement.Material)), prefix: new HarmonyMethod(typeof(Debug), nameof(Debug.Prefix)));
         }
 
-        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator gen)
+        public static void Prefix(Settlement __instance)
         {
-            IEnumerable<CodeInstruction> codeInstructions = Transpiler2(instructions, gen);
-            foreach (CodeInstruction codeInstruction in codeInstructions)
-            {
-                //Log.Message(codeInstruction.ToString());
-                Log.ResetMessageCount();
-                yield return codeInstruction;
-            }
+            Log.Message($"{__instance.Label} {__instance.Faction?.Name} {__instance.Faction?.def.defName} {__instance.Faction?.def.settlementTexturePath}");
+            Log.ResetMessageCount();
         }
     }
 
