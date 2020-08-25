@@ -12,32 +12,89 @@ namespace Debug
     using System.Linq;
     using System.Reflection;
     using System.Reflection.Emit;
+    using System.Runtime.Remoting;
     using HarmonyLib;
     using RimWorld.Planet;
     using UnityEngine;
 
     [StaticConstructorOnStartup]
-    public class Debug
+    public class Debug : MonoBehaviour
     {
+        [TweakValue("ZDebug", 0f, 1f)]
+        private static float InsectRed = 1f;
+
+        private static void InsectRed_Changed() => Changed();
+
+        [TweakValue("ZDebug", 0f, 1f)]
+        private static float InsectGreen = 1f;
+
+        private static void InsectGreen_Changed() => Changed();
+
+        [TweakValue("ZDebug", 0f, 1f)]
+        private static float InsectBlue = 1f;
+
+        [TweakValue("ZDebug", 0f, 2f)]
+        private static float Multiplier = 1f;
+
+        private static void InsectBlue_Changed() => Changed();
+
+
+        private static void Changed()
+        {
+            Find.CameraDriver.StartCoroutine(Coroutine());
+
+                return;
+            foreach (PawnKindLifeStage stage in PawnKindDefOf.Megascarab.lifeStages.Concat(PawnKindDefOf.Megaspider.lifeStages))
+            {
+                stage.bodyGraphicData.color = new Color(InsectRed, InsectGreen, InsectBlue);
+                Traverse.Create(stage.bodyGraphicData).Method("Init").GetValue();
+            }
+
+            foreach (Pawn mapPawnsAllPawn in Find.CurrentMap.mapPawns.AllPawns)
+                if (mapPawnsAllPawn.def.race.FleshType == FleshTypeDefOf.Insectoid)
+                    mapPawnsAllPawn.Drawer.renderer.graphics.ResolveAllGraphics();
+        }
+
+
+        private static IEnumerator Coroutine()
+        {
+            Log.Message("0");
+            float h = 0;
+            while (true)
+            {
+                Log.Message("1");
+                yield return new WaitForSecondsRealtime(0.1f);
+
+                foreach (PawnKindLifeStage stage in PawnKindDefOf.Megascarab.lifeStages.Concat(PawnKindDefOf.Megaspider.lifeStages))
+                {
+                    stage.bodyGraphicData.color = Color.HSVToRGB(h, 1f, 1f);
+                    Traverse.Create(stage.bodyGraphicData).Method("Init").GetValue();
+                }
+
+                if (Find.CurrentMap != null)
+                    foreach (Pawn mapPawnsAllPawn in Find.CurrentMap.mapPawns.AllPawns)
+                        if (mapPawnsAllPawn.def.race.FleshType == FleshTypeDefOf.Insectoid)
+                            mapPawnsAllPawn.Drawer.renderer.graphics.ResolveAllGraphics();
+                Log.Message("2");
+                h += 0.1f * Multiplier;
+                h %= 1f;
+            }
+        }
+
+
         static Debug()
         {
+         
             Harmony harmony = new Harmony("rimworld.erdelf.debug");
 
-            foreach (WorldObjectDef worldObjectDef in DefDatabase<WorldObjectDef>.AllDefs.Where(wod => wod.texture.NullOrEmpty()))
-            {
-                worldObjectDef.texture = WorldObjectDefOf.RoutePlannerWaypoint.texture;
-            }
+            //harmony.Patch(AccessTools.Method(typeof(CreditsAssembler), nameof(CreditsAssembler.AllCredits)), postfix: new HarmonyMethod(typeof(Debug), nameof(Postfix)));
 
             //Harmony.DEBUG = true;
             //harmony.Patch(AccessTools.PropertyGetter(typeof(Settlement), nameof(Settlement.Material)), prefix: new HarmonyMethod(typeof(Debug), nameof(Debug.Prefix)));
         }
-
-        public static void Prefix(Settlement __instance)
-        {
-            Log.Message($"{__instance.Label} {__instance.Faction?.Name} {__instance.Faction?.def.defName} {__instance.Faction?.def.settlementTexturePath}");
-            Log.ResetMessageCount();
-        }
     }
+
+
 
     public class DummyDef : ThingDef
     {
