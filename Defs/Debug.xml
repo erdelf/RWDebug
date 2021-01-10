@@ -5,4 +5,61 @@
     <defName>dummy</defName>
     <label>dummy</label>
   </Debug.DummyDef>
+
+  <ResearchProjectDef>
+    <defName>ProjectOne</defName>
+    <label>project one</label>
+    <description>project one.</description>
+    <baseCost>100</baseCost>
+    <techLevel>Medieval</techLevel>
+    <researchViewX>1.20</researchViewX>
+    <researchViewY>0.70</researchViewY>
+    <researchMods>
+      <li Class="Debug.DefEditor">
+        <def>Bed</def>
+        <defType>ThingDef</defType>
+        <target>costStuffCount</target>
+        <value>0.6</value>
+        <mode>Mult</mode>
+      </li>
+    </researchMods>
+  </ResearchProjectDef>
+
+<ResearchProjectDef>
+    <defName>ProjectThree</defName>
+    <label>project three</label>
+    <description>project three.</description>
+    <baseCost>100</baseCost>
+    <techLevel>Medieval</techLevel>
+    <researchViewX>1.30</researchViewX>
+    <researchViewY>0.70</researchViewY>
+    <researchMods>
+      <li Class="Debug.DefEditor">
+        <def>Bed</def>
+        <defType>ThingDef</defType>
+        <target>costStuffCount</target>
+        <value>0.25</value>
+        <mode>Mult</mode>
+      </li>
+    </researchMods>
+  </ResearchProjectDef>
+
+  <ResearchProjectDef>
+    <defName>ProjectTwo</defName>
+    <label>project two</label>
+    <description>project two.</description>
+    <baseCost>100</baseCost>
+    <techLevel>Medieval</techLevel>
+    <researchViewX>1.20</researchViewX>
+    <researchViewY>1.20</researchViewY>
+    <researchMods>
+      <li Class="Debug.DefEditor">
+        <def>Soil</def>
+        <defType>TerrainDef</defType>
+        <target>fertility</target>
+        <value>1.1</value>
+        <mode>Mult</mode>
+      </li>
+    </researchMods>
+  </ResearchProjectDef>
 </Defs>
