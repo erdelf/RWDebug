@@ -24,7 +24,10 @@ namespace Debug
         {
             Harmony harmony = new Harmony("rimworld.erdelf.debug");
             Harmony.DEBUG = true;
-            harmony.Patch(AccessTools.Method(typeof(HaulDestinationManager), "CompareHaulDestinationPrioritiesDescending"), prefix: new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
+
+            Log.Message(string.Join("\n", DefDatabase<PawnKindDef>.AllDefs.Select(pkd => pkd.RaceProps).Where(rp => rp.IsMechanoid).Select(rp => rp.body).Distinct().Select(body => $"{body.defName}: {string.Join(" | ", body.AllPartsVulnerableToFrostbite.Select(bpr => bpr.Label))}")));
+
+            //harmony.Patch(AccessTools.Method(typeof(HaulDestinationManager), "CompareHaulDestinationPrioritiesDescending"), prefix: new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
         }
 
         public static void Prefix(IHaulDestination a, IHaulDestination b)
