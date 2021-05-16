@@ -30,10 +30,16 @@ namespace Debug
         public static void Prefix(IHaulDestination a, IHaulDestination b)
         {
             if(a.GetStoreSettings() == null)
-                Log.Message($"{a} at {a.Position} is having issues");
+                if (a is Building_Storage bs)
+                    bs.settings = new StorageSettings(a);
+                else
+                    Log.Message($"{a} at {a.Position} is having issues");
 
             if(b.GetStoreSettings() == null)
-                Log.Message($"{b} at {b.Position} is having issues");
+                if (b is Building_Storage bs)
+                    bs.settings = new StorageSettings(b);
+                else
+                    Log.Message($"{b} at {b.Position} is having issues");
 
             Log.ResetMessageCount();
         }
