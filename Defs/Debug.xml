@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Defs>
-  <Debug.DummyDef>
+  <!--Debug.DummyDef>
     <thingClass>Thing</thingClass>
     <defName>dummy</defName>
     <label>dummy</label>
@@ -61,5 +61,5 @@
         <mode>Mult</mode>
       </li>
     </researchMods>
-  </ResearchProjectDef>
+  </ResearchProjectDef-->
 </Defs>

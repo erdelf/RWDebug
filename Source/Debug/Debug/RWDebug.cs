@@ -22,16 +22,74 @@ namespace Debug
     {
         static RWDebug()
         {
-            Harmony harmony = new Harmony("rimworld.erdelf.debug");
-            Harmony.DEBUG = true;
+            List<Backstory> backstories = BackstoryDatabase.allBackstories.Values.ToList();
 
-            Log.Message(string.Join("\n", DefDatabase<PawnKindDef>.AllDefs.Select(pkd => pkd.RaceProps).Where(rp => rp.IsMechanoid).Select(rp => rp.body).Distinct().Select(body => $"{body.defName}: {string.Join(" | ", body.AllPartsVulnerableToFrostbite.Select(bpr => bpr.Label))}")));
+            List<BodyTypeDef> maleBodyTypes = new List<BodyTypeDef>();
+            List<BodyTypeDef> femaleBodyTypes = new List<BodyTypeDef>();
 
-            //harmony.Patch(AccessTools.Method(typeof(HaulDestinationManager), "CompareHaulDestinationPrioritiesDescending"), prefix: new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
+            Dictionary<BodyTypeDef, Dictionary<Gender, List<Backstory>>> bsGbtd = new Dictionary<BodyTypeDef, Dictionary<Gender, List<Backstory>>>();
+
+            AccessTools.FieldRef<Backstory, BodyTypeDef> maleRef = AccessTools.FieldRefAccess<Backstory, BodyTypeDef>("bodyTypeMaleResolved");
+            AccessTools.FieldRef<Backstory, BodyTypeDef> femaleRef = AccessTools.FieldRefAccess<Backstory, BodyTypeDef>("bodyTypeFemaleResolved");
+
+            foreach (Backstory backstory in backstories)
+            {
+                try
+                {
+                    BodyTypeDef maleBodyType   = maleRef.Invoke(backstory);   // backstory.BodyTypeFor(Gender.Male);
+                    BodyTypeDef femaleBodyType = femaleRef.Invoke(backstory); // backstory.BodyTypeFor(Gender.Female);
+
+                    Log.Message(backstory.identifier + " | " + maleBodyType?.defName + " | " + femaleBodyType?.defName);
+
+                    if (maleBodyType != null)
+                    {
+                        maleBodyTypes.Add(maleBodyType);
+                        if (!bsGbtd.ContainsKey(maleBodyType))
+                            bsGbtd.Add(maleBodyType, new Dictionary<Gender, List<Backstory>>());
+                        if (!bsGbtd[maleBodyType].ContainsKey(Gender.Male))
+                            bsGbtd[maleBodyType].Add(Gender.Male, new List<Backstory>());
+                        bsGbtd[maleBodyType][Gender.Male].Add(backstory);
+                    }
+
+                    if (femaleBodyType != null)
+                    {
+                        femaleBodyTypes.Add(femaleBodyType);
+                        if (!bsGbtd.ContainsKey(femaleBodyType))
+                            bsGbtd.Add(femaleBodyType, new Dictionary<Gender, List<Backstory>>());
+                        if (!bsGbtd[femaleBodyType].ContainsKey(Gender.Female))
+                            bsGbtd[femaleBodyType].Add(Gender.Female, new List<Backstory>());
+                        bsGbtd[femaleBodyType][Gender.Female].Add(backstory);
+                    }
+
+                    Log.ResetMessageCount();
+                }
+                catch
+                {
+                    // ignored
+                }
+            }
+            Log.Message("2");
+            Log.Message("male: "   + string.Join(" | ", maleBodyTypes.Where(btd => btd   != null).Distinct().OrderBy(btd => btd.defName).Select(btd => btd.defName)));
+            Log.Message("female: " + string.Join(" | ", femaleBodyTypes.Where(btd => btd != null).Distinct().OrderBy(btd => btd.defName).Select(btd => btd.defName)));
+
+            Log.Message(string.Join("\n", bsGbtd.Select(btdDict => $"{btdDict.Key.defName}: {string.Join(" \t||\t ", btdDict.Value.Select(gl => $"{gl.Key.ToString()}: ({gl.Value.Count}) {gl.Value.First()}"))}")));
+
+
+
+
+            //AccessTools.Field(typeof(HealthCardUtility), "showAllHediffs").SetValue(null, true);
+            //Harmony harmony = new Harmony("rimworld.erdelf.debug");
+            //Harmony.DEBUG = true;
+
+            //Log.Message(string.Join("\n", DefDatabase<PawnKindDef>.AllDefs.Select(pkd => pkd.RaceProps).Where(rp => rp.IsMechanoid).Select(rp => rp.body).Distinct().Select(body => $"{body.defName}: {string.Join(" | ", body.AllPartsVulnerableToFrostbite.Select(bpr => bpr.Label))}")));
+
+            //harmony.Patch(AccessTools.Method(typeof(HealthCardUtility), "VisibleHediffs"), prefix: new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
         }
+        
 
-        public static void Prefix(IHaulDestination a, IHaulDestination b)
+        public static void Prefix()
         {
+            /*
             if(a.GetStoreSettings() == null)
                 if (a is Building_Storage bs)
                     bs.settings = new StorageSettings(a);
@@ -44,7 +102,7 @@ namespace Debug
                 else
                     Log.Message($"{b} at {b.Position} is having issues");
 
-            Log.ResetMessageCount();
+            Log.ResetMessageCount();*/
         }
 
         
