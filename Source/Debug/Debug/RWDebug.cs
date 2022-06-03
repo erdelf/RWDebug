@@ -6,6 +6,8 @@ namespace Debug
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.Globalization;
+    using System.IO;
     using System.Linq;
     using System.Reflection;
     using System.Reflection.Emit;
@@ -22,61 +24,6 @@ namespace Debug
     {
         static RWDebug()
         {
-            List<Backstory> backstories = BackstoryDatabase.allBackstories.Values.ToList();
-
-            List<BodyTypeDef> maleBodyTypes = new List<BodyTypeDef>();
-            List<BodyTypeDef> femaleBodyTypes = new List<BodyTypeDef>();
-
-            Dictionary<BodyTypeDef, Dictionary<Gender, List<Backstory>>> bsGbtd = new Dictionary<BodyTypeDef, Dictionary<Gender, List<Backstory>>>();
-
-            AccessTools.FieldRef<Backstory, BodyTypeDef> maleRef = AccessTools.FieldRefAccess<Backstory, BodyTypeDef>("bodyTypeMaleResolved");
-            AccessTools.FieldRef<Backstory, BodyTypeDef> femaleRef = AccessTools.FieldRefAccess<Backstory, BodyTypeDef>("bodyTypeFemaleResolved");
-
-            foreach (Backstory backstory in backstories)
-            {
-                try
-                {
-                    BodyTypeDef maleBodyType   = maleRef.Invoke(backstory);   // backstory.BodyTypeFor(Gender.Male);
-                    BodyTypeDef femaleBodyType = femaleRef.Invoke(backstory); // backstory.BodyTypeFor(Gender.Female);
-
-                    Log.Message(backstory.identifier + " | " + maleBodyType?.defName + " | " + femaleBodyType?.defName);
-
-                    if (maleBodyType != null)
-                    {
-                        maleBodyTypes.Add(maleBodyType);
-                        if (!bsGbtd.ContainsKey(maleBodyType))
-                            bsGbtd.Add(maleBodyType, new Dictionary<Gender, List<Backstory>>());
-                        if (!bsGbtd[maleBodyType].ContainsKey(Gender.Male))
-                            bsGbtd[maleBodyType].Add(Gender.Male, new List<Backstory>());
-                        bsGbtd[maleBodyType][Gender.Male].Add(backstory);
-                    }
-
-                    if (femaleBodyType != null)
-                    {
-                        femaleBodyTypes.Add(femaleBodyType);
-                        if (!bsGbtd.ContainsKey(femaleBodyType))
-                            bsGbtd.Add(femaleBodyType, new Dictionary<Gender, List<Backstory>>());
-                        if (!bsGbtd[femaleBodyType].ContainsKey(Gender.Female))
-                            bsGbtd[femaleBodyType].Add(Gender.Female, new List<Backstory>());
-                        bsGbtd[femaleBodyType][Gender.Female].Add(backstory);
-                    }
-
-                    Log.ResetMessageCount();
-                }
-                catch
-                {
-                    // ignored
-                }
-            }
-            Log.Message("2");
-            Log.Message("male: "   + string.Join(" | ", maleBodyTypes.Where(btd => btd   != null).Distinct().OrderBy(btd => btd.defName).Select(btd => btd.defName)));
-            Log.Message("female: " + string.Join(" | ", femaleBodyTypes.Where(btd => btd != null).Distinct().OrderBy(btd => btd.defName).Select(btd => btd.defName)));
-
-            Log.Message(string.Join("\n", bsGbtd.Select(btdDict => $"{btdDict.Key.defName}: {string.Join(" \t||\t ", btdDict.Value.Select(gl => $"{gl.Key.ToString()}: ({gl.Value.Count}) {gl.Value.First()}"))}")));
-
-
-
-
             //AccessTools.Field(typeof(HealthCardUtility), "showAllHediffs").SetValue(null, true);
             //Harmony harmony = new Harmony("rimworld.erdelf.debug");
             //Harmony.DEBUG = true;
@@ -105,7 +52,135 @@ namespace Debug
             Log.ResetMessageCount();*/
         }
 
-        
+        [DebugAction("General", allowedGameStates = AllowedGameStates.Playing)]
+        public static void DumpPawnAtlasByDir()
+        {
+            List<DebugMenuOption> list = new List<DebugMenuOption>();
+
+            for (int i = 7; i <= 16; i++)
+            {
+                int value = Mathf.RoundToInt(Mathf.Pow(2, i));
+                list.Add(new DebugMenuOption(value.ToString(CultureInfo.CurrentCulture), DebugMenuOptionMode.Action, () =>
+                                                                                                                     {
+                                                                                                                         List<DebugMenuOption> list2 = new List<DebugMenuOption>();
+
+                                                                                                                         int count = Mathf.CeilToInt(Mathf.Sqrt(Find.ColonistBar.GetColonistsInOrder().Count));
+
+                                                                                                                         for (int j = 1; j <= count; j ++)
+                                                                                                                         {
+                                                                                                                             int val = j;
+                                                                                                                             int k   = val * val;
+                                                                                                                             list2.Add(new DebugMenuOption($"{k} | {val}*{val}", DebugMenuOptionMode.Action, () =>
+                                                                                                                                                               LongEventHandler.QueueLongEvent(() => DumpAtlas(value, val), "Creating Pawn Atlas", false, null)));
+                                                                                                                         }
+
+                                                                                                                         Find.WindowStack.Add(new Dialog_DebugOptionListLister(list2));
+                                                                                                                     }));
+            }
+
+            Find.WindowStack.Add(new Dialog_DebugOptionListLister(list));
+        }
+
+        public static void DumpAtlas(int atlasSize, int scaleFactor)
+        {
+            int pawnSize = atlasSize / scaleFactor;
+
+            int pawnsPerAtlas = scaleFactor * scaleFactor;
+
+            List<Rect> uvRects = new List<Rect>();
+            for (int x = 0; x < atlasSize; x += pawnSize)
+            {
+                for (int y = 0; y < atlasSize; y += pawnSize)
+                    uvRects.Add(new Rect((float)x / atlasSize, (float)y / atlasSize, (float)pawnSize / atlasSize, (float) pawnSize / atlasSize));
+            }
+
+            Pawn[] colonistsInOrder = Find.ColonistBar.GetColonistsInOrder().ToArray();
+
+            string path = Application.dataPath + "\\atlasDump_PawnsByDir";
+
+            if (!Directory.Exists(path))
+                Directory.CreateDirectory(path);
+            else
+                foreach (string file in Directory.GetFiles(path))
+                    File.Delete(file);
+
+            for (int c = 0; c < Mathf.CeilToInt((float) colonistsInOrder.Length / pawnsPerAtlas); c++)
+            {
+                int initialIndex = pawnsPerAtlas * c;
+
+                for (int i = 0; i < 4; i++)
+                {
+                    Rot4 rot = new Rot4(i);
+                    RenderTexture texture = new RenderTexture(atlasSize, atlasSize, 24, RenderTextureFormat.ARGB32, 0)
+                                            {
+                                                name = $"Atlas_{c}_{rot.ToStringHuman()}"
+                                            };
+
+                    for (int index = 0; index < pawnsPerAtlas && initialIndex + index < colonistsInOrder.Length; index++)
+                    {
+                        Pawn pawn = colonistsInOrder[initialIndex + index];
+
+                        Find.PawnCacheCamera.rect = uvRects[index];
+                        Find.PawnCacheRenderer.RenderPawn(pawn, texture, Vector3.zero, 1f, 0f, rot);
+                        Find.PawnCacheCamera.rect = new Rect(0f, 0f, 1f, 1f);
+                    }
+
+                    TextureAtlasHelper.WriteDebugPNG(texture, $"{path}\\{texture.name}.png");
+                }
+            }
+        }
+
+        [DebugAction("General", allowedGameStates = AllowedGameStates.Playing)]
+        public static void DumpPawnAtlasByDirIndividual()
+        {
+            List<DebugMenuOption> list = new List<DebugMenuOption>();
+
+            for (int i = 7; i <= 16; i++)
+            {
+                int value = Mathf.RoundToInt(Mathf.Pow(2, i));
+                list.Add(new DebugMenuOption(value.ToString(CultureInfo.CurrentCulture), DebugMenuOptionMode.Action, () =>
+                {
+                    LongEventHandler.QueueLongEvent(() => DumpAtlasIndividual(value), "Creating Pawn Atlas", false, null);
+                }));
+            }
+
+            Find.WindowStack.Add(new Dialog_DebugOptionListLister(list));
+        }
+
+        public static void DumpAtlasIndividual(int atlasSize)
+        {
+            Rect uvRect =new Rect(0, 0, atlasSize, atlasSize);
+
+            Pawn[] colonistsInOrder = Find.ColonistBar.GetColonistsInOrder().ToArray();
+
+            string path = Application.dataPath + "\\atlasDump_PawnsByDirIndividual";
+
+            if (!Directory.Exists(path))
+                Directory.CreateDirectory(path);
+            else
+                foreach (string file in Directory.GetFiles(path))
+                    File.Delete(file);
+
+            for (int c = 0; c < colonistsInOrder.Length; c++)
+            {
+                Pawn pawn = colonistsInOrder[c];
+
+                for (int i = 0; i < 4; i++)
+                {
+                    Rot4 rot = new Rot4(i);
+                    RenderTexture texture = new RenderTexture(atlasSize, atlasSize, 24, RenderTextureFormat.ARGB32, 0)
+                    {
+                        name = $"{(pawn.Name as NameTriple)?.Nick ?? pawn.Name.ToStringShort}_{rot.ToStringHuman()}"
+                    };
+
+                    Find.PawnCacheCamera.rect = uvRect;
+                    Find.PawnCacheRenderer.RenderPawn(pawn, texture, Vector3.zero, 1f, 0f, rot);
+                    Find.PawnCacheCamera.rect = new Rect(0f, 0f, 1f, 1f);
+
+                    TextureAtlasHelper.WriteDebugPNG(texture, $"{path}\\{texture.name}.png");
+                }
+            }
+        }
     }
 
     public class DummyDef : ThingDef
