@@ -14,6 +14,7 @@ namespace Debug
     using System.Security.Policy;
     using HarmonyLib;
     using RimWorld.Planet;
+    using RimWorld.QuestGen;
     using UnityEngine;
     using UnityEngine.Scripting;
     using Verse.AI;
@@ -31,6 +32,27 @@ namespace Debug
             //Log.Message(string.Join("\n", DefDatabase<PawnKindDef>.AllDefs.Select(pkd => pkd.RaceProps).Where(rp => rp.IsMechanoid).Select(rp => rp.body).Distinct().Select(body => $"{body.defName}: {string.Join(" | ", body.AllPartsVulnerableToFrostbite.Select(bpr => bpr.Label))}")));
 
             //harmony.Patch(AccessTools.Method(typeof(HealthCardUtility), "VisibleHediffs"), prefix: new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
+
+            Dictionary<Type, (int subIndex, string subs)> dict = new Dictionary<Type, (int subIndex, string subs)>();
+
+            foreach (Type type in typeof(LogMessage).Assembly.GetTypes())
+            {
+                int    subIndex = 0;
+                string subs     = type.Name;
+
+                Type typ = type;
+
+                while (typ.BaseType != null)
+                {
+                    typ = typ.BaseType;
+                    subIndex++;
+                    subs += ": " + typ.Name;
+                }
+
+                dict.Add(type, (subIndex, subs));
+            }
+
+            Log.Message(string.Join("\n", dict.OrderByDescending(kvp => kvp.Value.subIndex).Select(kvp => kvp.Value.subIndex + " | " + kvp.Value.subs)));
         }
         
 
