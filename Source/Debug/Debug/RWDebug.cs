@@ -33,26 +33,31 @@ namespace Debug
 
             //harmony.Patch(AccessTools.Method(typeof(HealthCardUtility), "VisibleHediffs"), prefix: new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
 
-            Dictionary<Type, (int subIndex, string subs)> dict = new Dictionary<Type, (int subIndex, string subs)>();
+            ExpansionDef expansionWithIdentifier = ModLister.GetExpansionWithIdentifier("ludeon.rimworld.biotech");
 
-            foreach (Type type in typeof(LogMessage).Assembly.GetTypes())
+            List<string> apparelInfo = new List<string>();
+            List<string> equipmentInfo = new List<string>();
+
+            foreach (Def allDef in expansionWithIdentifier.modContentPack.AllDefs)
             {
-                int    subIndex = 0;
-                string subs     = type.Name;
-
-                Type typ = type;
-
-                while (typ.BaseType != null)
+                if (allDef is ThingDef td)
                 {
-                    typ = typ.BaseType;
-                    subIndex++;
-                    subs += ": " + typ.Name;
-                }
+                    if (td.IsApparel)
+                    {
+                        apparelInfo.Add($"{td.defName}: {string.Join(", ", td.apparel.layers.Select(ald => ald.defName))} | {string.Join(", ", td.apparel.bodyPartGroups.Select(bpgd => bpgd.defName))}");
+                    }
 
-                dict.Add(type, (subIndex, subs));
+                    if (td.equipmentType != EquipmentType.None)
+                    {
+                        equipmentInfo.Add($"{td.defName}: {td.equipmentType}");
+                    }
+                }
             }
 
-            Log.Message(string.Join("\n", dict.OrderByDescending(kvp => kvp.Value.subIndex).Select(kvp => kvp.Value.subIndex + " | " + kvp.Value.subs)));
+            Log.Message("Apparel: ");
+            Log.Message(string.Join("\n", apparelInfo));
+            Log.Message("Equipment: ");
+            Log.Message(string.Join("\n", equipmentInfo));
         }
         
 
