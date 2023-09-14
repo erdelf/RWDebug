@@ -33,28 +33,9 @@ namespace Debug
             //Log.Message(string.Join("\n", DefDatabase<PawnKindDef>.AllDefs.Select(pkd => pkd.RaceProps).Where(rp => rp.IsMechanoid).Select(rp => rp.body).Distinct().Select(body => $"{body.defName}: {string.Join(" | ", body.AllPartsVulnerableToFrostbite.Select(bpr => bpr.Label))}")));
 
             //harmony.Patch(AccessTools.Method(typeof(DefDatabase<SymbolDef>), nameof(DefDatabase<SymbolDef>.Add)), prefix: new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
-
-            Dictionary<string, int> count = new Dictionary<string, int> { { "unclear origin", 0 } };
-            foreach (SymbolDef symbolDef in DefDatabase<SymbolDef>.AllDefsListForReading)
-            {
-                try
-                {
-                    string name = symbolDef.modContentPack.Name;
-
-                    if (!count.ContainsKey(name))
-                        count.Add(name, 0);
-                    count[name]++;
-                }
-                catch (Exception)
-                {
-                    count["unclear origin"]++;
-                }
-            }
-
-            Log.Message("SYMBOLDEF debug");
-            Log.Message(string.Join("\n", count.OrderByDescending(kvp => kvp.Value).Select(kvp => kvp.Key + ": " + kvp.Value)));
-
-            Log.Message(string.Join("\n", stacktraces));
+            
+            AccessTools.Field(typeof(TexButton), nameof(TexButton.ShowBeauty)).SetValue(null, ContentFinder<Texture2D>.Get("UI/Buttons/ShowBeauty"));
+            AccessTools.Field(typeof(TexButton), nameof(TexButton.ShowPollutionOverlay)).SetValue(null, ContentFinder<Texture2D>.Get("UI/Buttons/ShowPollutionOverlay"));
         }
 
         public static HashSet<string> stacktraces = new HashSet<string>();
@@ -71,9 +52,9 @@ namespace Debug
         public DummyDef() : base()
         {
             //Log.Message("Patch");
-            Harmony harmony = new Harmony("rimworld.erdelf.dummy_checker");
+            //Harmony harmony = new Harmony("rimworld.erdelf.dummy_checker");
             //harmony.Patch(typeof(ThingDef).GetMethods(AccessTools.all).First(mi => mi.HasAttribute<CompilerGeneratedAttribute>() && mi.Name.Contains("PostLoad")), prefix: new HarmonyMethod(typeof(RWDebug), nameof(RWDebug.Prefix)));
-            harmony.Patch(AccessTools.Method(AccessTools.TypeByName("KCSG.StartupActions"), "AddDef"), prefix: new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
+            //harmony.Patch(AccessTools.Method(AccessTools.TypeByName("KCSG.StartupActions"), "AddDef"), prefix: new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
         }
 
         public static void Prefix()
