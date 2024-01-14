@@ -27,23 +27,26 @@ namespace Debug
         static RWDebug()
         {
             //AccessTools.Field(typeof(HealthCardUtility), "showAllHediffs").SetValue(null, true);
-            //Harmony harmony = new Harmony("rimworld.erdelf.debug");
+            Harmony harmony = new Harmony("rimworld.erdelf.debug");
             //Harmony.DEBUG = true;
 
             //Log.Message(string.Join("\n", DefDatabase<PawnKindDef>.AllDefs.Select(pkd => pkd.RaceProps).Where(rp => rp.IsMechanoid).Select(rp => rp.body).Distinct().Select(body => $"{body.defName}: {string.Join(" | ", body.AllPartsVulnerableToFrostbite.Select(bpr => bpr.Label))}")));
 
-            //harmony.Patch(AccessTools.Method(typeof(DefDatabase<SymbolDef>), nameof(DefDatabase<SymbolDef>.Add)), prefix: new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
-            
-            AccessTools.Field(typeof(TexButton), nameof(TexButton.ShowBeauty)).SetValue(null, ContentFinder<Texture2D>.Get("UI/Buttons/ShowBeauty"));
-            AccessTools.Field(typeof(TexButton), nameof(TexButton.ShowPollutionOverlay)).SetValue(null, ContentFinder<Texture2D>.Get("UI/Buttons/ShowPollutionOverlay"));
+            harmony.Patch(AccessTools.Method(typeof(DeepResourceGrid), nameof(DeepResourceGrid.ThingDefAt)), postfix: new HarmonyMethod(typeof(RWDebug), nameof(Postfix)));
         }
 
         public static HashSet<string> stacktraces = new HashSet<string>();
         public static int             callCount = 0;
 
-        public static void Prefix()
+        public static void Postfix(IntVec3 c, ref ThingDef __result, ushort[] ___defGrid, Map ___map)
         {
-            
+            int    cellToIndex                                        = ___map.cellIndices.CellToIndex(c);
+            ushort itemShort                                            = ___defGrid[cellToIndex];
+            if (__result == null && itemShort != 0)
+            {
+                ___defGrid[itemShort] = 52551;
+                __result            = DefDatabase<ThingDef>.GetByShortHash(52551);
+            }
         }
     }
 
