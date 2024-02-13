@@ -32,21 +32,25 @@ namespace Debug
 
             //Log.Message(string.Join("\n", DefDatabase<PawnKindDef>.AllDefs.Select(pkd => pkd.RaceProps).Where(rp => rp.IsMechanoid).Select(rp => rp.body).Distinct().Select(body => $"{body.defName}: {string.Join(" | ", body.AllPartsVulnerableToFrostbite.Select(bpr => bpr.Label))}")));
 
-            harmony.Patch(AccessTools.Method(typeof(DeepResourceGrid), nameof(DeepResourceGrid.ThingDefAt)), postfix: new HarmonyMethod(typeof(RWDebug), nameof(Postfix)));
+            harmony.Patch(AccessTools.PropertyGetter(typeof(Pawn), nameof(Pawn.ShouldAvoidFences)), prefix: new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
         }
 
         public static HashSet<string> stacktraces = new HashSet<string>();
         public static int             callCount = 0;
 
-        public static void Postfix(IntVec3 c, ref ThingDef __result, ushort[] ___defGrid, Map ___map)
+        public static void Prefix(Pawn __instance)
         {
-            int    cellToIndex                                        = ___map.cellIndices.CellToIndex(c);
-            ushort itemShort                                            = ___defGrid[cellToIndex];
-            if (__result == null && itemShort != 0)
-            {
-                ___defGrid[itemShort] = 52551;
-                __result            = DefDatabase<ThingDef>.GetByShortHash(52551);
-            }
+            Log.ResetMessageCount();
+
+            Log.Message("Checking Fences");
+            Log.Message((__instance     != null).ToString());
+            Log.Message((__instance.def != null).ToString());
+            Log.Message("def: " + __instance.def.defName);
+            Log.Message("pos: " + __instance.Position);
+            Log.Message("name: " + __instance.Name);
+            Log.Message((__instance.def.race != null).ToString());
+            Log.Message((__instance.def.race.FenceBlocked).ToString());
+            Log.Message((__instance.roping != null).ToString());
         }
     }
 
