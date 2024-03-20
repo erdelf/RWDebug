@@ -32,7 +32,7 @@ namespace Debug
 
             //Log.Message(string.Join("\n", DefDatabase<PawnKindDef>.AllDefs.Select(pkd => pkd.RaceProps).Where(rp => rp.IsMechanoid).Select(rp => rp.body).Distinct().Select(body => $"{body.defName}: {string.Join(" | ", body.AllPartsVulnerableToFrostbite.Select(bpr => bpr.Label))}")));
 
-            harmony.Patch(AccessTools.PropertyGetter(typeof(Pawn), nameof(Pawn.ShouldAvoidFences)), prefix: new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
+            //harmony.Patch(AccessTools.PropertyGetter(typeof(Pawn), nameof(Pawn.ShouldAvoidFences)), prefix: new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
         }
 
         public static HashSet<string> stacktraces = new HashSet<string>();
@@ -40,19 +40,30 @@ namespace Debug
 
         public static void Prefix(Pawn __instance)
         {
-            Log.ResetMessageCount();
-
-            Log.Message("Checking Fences");
-            Log.Message((__instance     != null).ToString());
-            Log.Message((__instance.def != null).ToString());
-            Log.Message("def: " + __instance.def.defName);
-            Log.Message("pos: " + __instance.Position);
-            Log.Message("name: " + __instance.Name);
-            Log.Message((__instance.def.race != null).ToString());
-            Log.Message((__instance.def.race.FenceBlocked).ToString());
-            Log.Message((__instance.roping != null).ToString());
         }
     }
+
+    [StaticConstructorOnStartup]
+    public class ShowMiddleMap : MapComponent
+    {
+        private                 IntVec3  strikeLoc    = IntVec3.Invalid;
+        public IntVec3 StrikeLoc => this.strikeLoc == IntVec3.Invalid ? (this.strikeLoc = new IntVec3(this.map.Size.x / 2, 0, this.map.Size.z / 2)) : this.strikeLoc;
+
+
+        public ShowMiddleMap(Map map) : base(map)
+        {
+        }
+
+        public override void MapComponentUpdate()
+        {
+            base.MapComponentUpdate();
+            if (Find.CurrentMap == this.map)
+            {
+                GenDraw.DrawRadiusRing(StrikeLoc, 2f);
+            }
+        }
+    }
+
 
     public class DummyDef : ThingDef
     {
