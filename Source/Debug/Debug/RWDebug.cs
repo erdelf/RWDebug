@@ -32,35 +32,26 @@ namespace Debug
 
             //Log.Message(string.Join("\n", DefDatabase<PawnKindDef>.AllDefs.Select(pkd => pkd.RaceProps).Where(rp => rp.IsMechanoid).Select(rp => rp.body).Distinct().Select(body => $"{body.defName}: {string.Join(" | ", body.AllPartsVulnerableToFrostbite.Select(bpr => bpr.Label))}")));
 
-            //harmony.Patch(AccessTools.PropertyGetter(typeof(Pawn), nameof(Pawn.ShouldAvoidFences)), prefix: new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
+            harmony.Patch(AccessTools.Method(typeof(DebugThingPlaceHelper), nameof(DebugThingPlaceHelper.IsDebugSpawnable)), prefix: new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
+
+
+            //Log.Message(DefDatabase<PreceptDef>.GetNamed("TreeCutting_Horrible").comps.OfType<PreceptComp_KnowsMemoryThought>().Join(pc => pc.eventDef.defName, "\n"));
+
+
+            //Log.Message(SolidBioDatabase.allBios.Join(pb => pb.name.ToStringFull + ": " + pb.childhood.skillGains.Join(sg => sg.skill.defName + ": " + sg.amount, ",") + " | " + pb.adulthood.skillGains.Join(sg => sg.skill.defName + ": " + sg.amount, ","), "\n"));
         }
 
         public static HashSet<string> stacktraces = new HashSet<string>();
         public static int             callCount = 0;
 
-        public static void Prefix(Pawn __instance)
+        public static void Prefix(ThingDef def)
         {
-        }
-    }
-
-    [StaticConstructorOnStartup]
-    public class ShowMiddleMap : MapComponent
-    {
-        private                 IntVec3  strikeLoc    = IntVec3.Invalid;
-        public IntVec3 StrikeLoc => this.strikeLoc == IntVec3.Invalid ? (this.strikeLoc = new IntVec3(this.map.Size.x / 2, 0, this.map.Size.z / 2)) : this.strikeLoc;
-
-
-        public ShowMiddleMap(Map map) : base(map)
-        {
-        }
-
-        public override void MapComponentUpdate()
-        {
-            base.MapComponentUpdate();
-            if (Find.CurrentMap == this.map)
-            {
-                GenDraw.DrawRadiusRing(StrikeLoc, 2f);
-            }
+            Log.ResetMessageCount();
+            Log.Message("--------------------------------------------");
+            Log.Message(def?.modContentPack?.Name);
+            Log.Message(def?.modContentPack?.FolderName);
+            Log.Message(def?.defName);
+            Log.Message(def?.category.ToString());
         }
     }
 
