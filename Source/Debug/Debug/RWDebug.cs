@@ -23,62 +23,13 @@ namespace Debug
     using UnityEngine.Scripting;
     using Verse.AI;
     using Object = System.Object;
+    using TunnelHiveSpawner = RimWorld.TunnelHiveSpawner;
 
     [StaticConstructorOnStartup]
     public class RWDebug
     {
         static RWDebug()
         {
-            List<LoadableXmlAsset> xmlAssets = LoadedModManager.RunningMods.SelectMany(m => DirectXmlLoader.XmlAssetsInModFolder(m, "Defs/")).ToList();
-            XmlDocument CreateDoc() => 
-                LoadedModManager.CombineIntoUnifiedXML(LoadedModManager.RunningMods.SelectMany(m => DirectXmlLoader.XmlAssetsInModFolder(m, "Defs/")).ToList(), new Dictionary<XmlNode, LoadableXmlAsset>());
-
-            long[] testTime(string path, int count, long[] init = null)
-            {
-                long[] length = new long[count];
-
-                init?.CopyTo(length, 0);
-
-                for (int i = init?.Length ?? 0; i < count; i++)
-                {
-                    XmlDocument   xmlDoc = CreateDoc();
-                    Stopwatch     sw     = new();
-                    sw.Start();
-                    foreach (XmlNode selectNode in xmlDoc.SelectNodes(path)!) 
-                        _ = selectNode.Name;
-                    sw.Stop();
-                    length[i] = sw.ElapsedTicks;
-                }
-
-                Log.Message($"avg: {length.Average()}\tmin: {length.Min()}\tmax: {length.Max()}\nfor {path} with {count} runs");
-
-                return length;
-            }
-
-            const string testOne = """Defs/TraderKindDef[defName="Base_Neolithic_Standard"]//tradeTag[text()="Artifact"]/../countRange""";
-            const string testTwo = """Defs/TraderKindDef[defName="Base_Neolithic_Standard"]//*[tradeTag="Artifact"]/countRange""";
-            const string testThree = "";
-
-
-            long[] testOneTimes = testTime(testOne, 1);
-            testOneTimes = testTime(testOne, 10,  testOneTimes);
-            testOneTimes = testTime(testOne, 50,  testOneTimes);
-            testOneTimes = testTime(testOne, 100, testOneTimes);
-            testOneTimes = testTime(testOne, 200, testOneTimes);
-            testOneTimes = testTime(testOne, 500, testOneTimes);
-            testOneTimes = testTime(testOne, 750, testOneTimes);
-            long[] testTwoTimes = testTime(testTwo, 1);
-            testTwoTimes = testTime(testTwo, 10,  testTwoTimes);
-            testTwoTimes = testTime(testTwo, 50,  testTwoTimes);
-            testTwoTimes = testTime(testTwo, 100, testTwoTimes);
-            testTwoTimes = testTime(testTwo, 200, testTwoTimes);
-            testTwoTimes = testTime(testTwo, 500, testTwoTimes);
-            testTwoTimes = testTime(testTwo, 750, testTwoTimes);
-            testTime(testOne, 1000, testOneTimes);
-            testTime(testTwo, 1000, testTwoTimes);
-
-
-
             //AccessTools.Field(typeof(HealthCardUtility), "showAllHediffs").SetValue(null, true);
             //Harmony harmony = new Harmony("rimworld.erdelf.debug");
             //Harmony.DEBUG = true;
@@ -106,6 +57,110 @@ namespace Debug
             Log.Message(def?.defName);
             Log.Message(def?.category.ToString());
         }
+    }
+
+    [StaticConstructorOnStartup]
+    public class ShowMiddleMap : MapComponent
+    {
+        private IntVec3 strikeLoc = IntVec3.Invalid;
+        public  IntVec3 StrikeLoc => this.strikeLoc == IntVec3.Invalid ? (this.strikeLoc = new IntVec3(this.map.Size.x / 2, 0, this.map.Size.z / 2)) : this.strikeLoc;
+
+
+        public ShowMiddleMap(Map map) : base(map)
+        {
+        }
+
+        public override void MapComponentUpdate()
+        {
+            base.MapComponentUpdate();
+            if (Find.CurrentMap == this.map && DebugMod.Instance.Settings.showMiddleMap)
+            {
+                GenDraw.DrawRadiusRing(this.StrikeLoc, DebugMod.Instance.Settings.radius, DebugMod.Instance.Settings.color);
+            }
+        }
+    }
+
+    public class DebugModSettings : ModSettings
+    {
+        public bool  showMiddleMap = true;
+        public float radius        = 2f;
+        public Color color         = Color.white;
+        public override void ExposeData()
+        {
+            base.ExposeData();
+            Scribe_Values.Look(ref this.showMiddleMap, nameof(this.showMiddleMap), true);
+            Scribe_Values.Look(ref this.radius,        nameof(this.radius), 2f);
+
+            Scribe_Values.Look(ref this.color,         nameof(this.color), Color.white);
+        }
+    }
+
+    public class DebugMod : Mod
+    {
+        public static DebugMod Instance { get; private set; }
+        private DebugModSettings settings;
+
+        public DebugModSettings Settings
+        {
+            get => this.settings ??= this.GetSettings<DebugModSettings>();
+        }
+
+        public override string SettingsCategory() => "Middle of the Map Marker";
+
+        public DebugMod(ModContentPack content) : base(content) => 
+            Instance = this;
+
+        public override void DoSettingsWindowContents(Rect inRect)
+        {
+            base.DoSettingsWindowContents(inRect);
+
+            Listing_Standard listingStandard = new Listing_Standard();
+            listingStandard.Begin(inRect);
+            listingStandard.CheckboxLabeled("Show middle", ref this.Settings.showMiddleMap);
+            this.Settings.radius = listingStandard.SliderLabeled("radius", this.Settings.radius, 0.25f, 10f);
+            listingStandard.Gap(20f);
+            listingStandard.Label("Color");
+            Widgets.DrawBoxSolid(listingStandard.GetRect(50f), this.Settings.color);
+            
+            if (listingStandard.ButtonText("Change Color"))
+            {
+                Find.WindowStack.Add(new Dialog_ColorPickerMiddleOfMap());
+            }
+            
+            listingStandard.End();
+        }
+    }
+
+    public class Dialog_ColorPickerMiddleOfMap : Dialog_ColorPickerBase
+    {
+        public Dialog_ColorPickerMiddleOfMap() : base(Widgets.ColorComponents.All, Widgets.ColorComponents.All)
+        {
+            this.oldColor = DebugMod.Instance.Settings.color;
+            this.color = this.oldColor;
+        }
+
+        public override Vector2 InitialSize { get; } = new Vector2(600f, 500f);
+
+        protected override void        SaveColor(Color color)
+        {
+            DebugMod.Instance.Settings.color = color;
+        }
+
+        protected override bool        ShowDarklight           => true;
+        protected override Color       DefaultColor            => this.oldColor;
+
+        protected override List<Color> PickableColors { get; } =
+            Enumerable.Range(0, 1).SelectMany(r => Enumerable.Range(10, 1).SelectMany(g => Enumerable.Range(0, 11).Select(b => Color.HSVToRGB(r++ / 10f, g-- / 10f, b / 10f)))).ToList();
+        protected override float ForcedColorValue
+        {
+            get
+            {
+                Color.RGBToHSV(this.color, out _, out _, out float v);
+                return v;
+            }
+        }
+
+        protected override bool  ShowColorTemperatureBar => true;
     }
 
 
