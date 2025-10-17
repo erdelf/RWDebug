@@ -55,8 +55,19 @@ namespace Debug
 
             //harmony.Patch(AccessTools.PropertyGetter(AccessTools.TypeByName("SectionLayer_EdgeShadows"), "Visible"), new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
             //harmony.Patch(AccessTools.PropertyGetter(AccessTools.TypeByName("SectionLayer_IndoorMask"),  "Visible"), new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
-            harmony.Patch(AccessTools.PropertyGetter(AccessTools.TypeByName("SectionLayer_SunShadows"),  "Visible"), new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
-            harmony.Patch(AccessTools.Method("Printer_Shadow:PrintShadow", [typeof(SectionLayer), typeof(Vector3), typeof(Vector3), typeof(Rot4)]), new HarmonyMethod(typeof(RWDebug), nameof(Prefix2)));
+            //harmony.Patch(AccessTools.PropertyGetter(AccessTools.TypeByName("SectionLayer_SunShadows"),  "Visible"), new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
+            //harmony.Patch(AccessTools.Method("Printer_Shadow:PrintShadow", [typeof(SectionLayer), typeof(Vector3), typeof(Vector3), typeof(Rot4)]), new HarmonyMethod(typeof(RWDebug), nameof(Prefix2)));
+
+            HashSet<byte[]> bytes = new HashSet<byte[]>();
+            try
+            {
+                while (true)
+                    bytes.Add(new byte[1024 * 1024 * 1024]);
+            }
+            catch
+            {
+            }
+
         }
 
         public static HashSet<string> stacktraces = new HashSet<string>();
