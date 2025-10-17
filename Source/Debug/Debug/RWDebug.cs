@@ -31,7 +31,7 @@ namespace Debug
         static RWDebug()
         {
             //AccessTools.Field(typeof(HealthCardUtility), "showAllHediffs").SetValue(null, true);
-            //Harmony harmony = new Harmony("rimworld.erdelf.debug");
+            Harmony harmony = new Harmony("rimworld.erdelf.debug");
             //Harmony.DEBUG = true;
 
             //Log.Message(string.Join("\n", DefDatabase<PawnKindDef>.AllDefs.Select(pkd => pkd.RaceProps).Where(rp => rp.IsMechanoid).Select(rp => rp.body).Distinct().Select(body => $"{body.defName}: {string.Join(" | ", body.AllPartsVulnerableToFrostbite.Select(bpr => bpr.Label))}")));
@@ -43,126 +43,57 @@ namespace Debug
 
 
             //Log.Message(SolidBioDatabase.allBios.Join(pb => pb.name.ToStringFull + ": " + pb.childhood.skillGains.Join(sg => sg.skill.defName + ": " + sg.amount, ",") + " | " + pb.adulthood.skillGains.Join(sg => sg.skill.defName + ": " + sg.amount, ","), "\n"));
+            //harmony.Patch(AccessTools.Method(typeof(SectionLayer_EdgeShadows), nameof(SectionLayer_EdgeShadows.ShouldDrawDynamic)), new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
+            //harmony.Patch(AccessTools.Method("SectionLayer_SunShadows:ShouldDrawDynamic"),                                          new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
+            //harmony.Patch(AccessTools.Method(typeof(SectionLayer_EdgeShadows), nameof(SectionLayer_EdgeShadows.ShouldDrawDynamic)), new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
+
+            //harmony.Patch(AccessTools.Method("SectionLayer_SunShadows:Regenerate"), transpiler: new HarmonyMethod(typeof(RWDebug), nameof(TranspilerSunRegen)));
+
+            //harmony.Patch(AccessTools.Method("SectionLayer_SunShadows:DrawLayer"),   new HarmonyMethod(typeof(RWDebug),             nameof(Prefix2)));
+            //harmony.Patch(AccessTools.Method("SectionLayer_EdgeShadows:Regenerate"), transpiler: new HarmonyMethod(typeof(RWDebug), nameof(TranspilerEdgeRegen)));
+            //harmony.Patch(AccessTools.Method("SectionLayer_SunShadows:Regenerate"), transpiler: new HarmonyMethod(typeof(RWDebug), nameof(TranspilerEdgeRegen)));
+
+            //harmony.Patch(AccessTools.PropertyGetter(AccessTools.TypeByName("SectionLayer_EdgeShadows"), "Visible"), new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
+            //harmony.Patch(AccessTools.PropertyGetter(AccessTools.TypeByName("SectionLayer_IndoorMask"),  "Visible"), new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
+            harmony.Patch(AccessTools.PropertyGetter(AccessTools.TypeByName("SectionLayer_SunShadows"),  "Visible"), new HarmonyMethod(typeof(RWDebug), nameof(Prefix)));
+            harmony.Patch(AccessTools.Method("Printer_Shadow:PrintShadow", [typeof(SectionLayer), typeof(Vector3), typeof(Vector3), typeof(Rot4)]), new HarmonyMethod(typeof(RWDebug), nameof(Prefix2)));
         }
 
         public static HashSet<string> stacktraces = new HashSet<string>();
         public static int             callCount = 0;
 
-        public static void Prefix(ThingDef def)
+        public static bool Prefix(ref bool __result)
         {
-            Log.ResetMessageCount();
-            Log.Message("--------------------------------------------");
-            Log.Message(def?.modContentPack?.Name);
-            Log.Message(def?.modContentPack?.FolderName);
-            Log.Message(def?.defName);
-            Log.Message(def?.category.ToString());
+            __result = false;
+            return false;
         }
-    }
-
-    [StaticConstructorOnStartup]
-    public class ShowMiddleMap : MapComponent
-    {
-        private IntVec3 strikeLoc = IntVec3.Invalid;
-        public  IntVec3 StrikeLoc => this.strikeLoc == IntVec3.Invalid ? (this.strikeLoc = new IntVec3(this.map.Size.x / 2, 0, this.map.Size.z / 2)) : this.strikeLoc;
-
-
-        public ShowMiddleMap(Map map) : base(map)
+        public static bool Prefix2()
         {
+            return false;
         }
 
-        public override void MapComponentUpdate()
+        private static readonly Color32 Test = new Color32(byte.MaxValue, byte.MaxValue, byte.MaxValue, byte.MaxValue);
+
+        public static IEnumerable<CodeInstruction> TranspilerEdgeRegen(IEnumerable<CodeInstruction> instructions)
         {
-            base.MapComponentUpdate();
-            if (Find.CurrentMap == this.map && DebugMod.Instance.Settings.showMiddleMap)
+            FieldInfo fii = AccessTools.Field(typeof(LayerSubMesh), "colors");
+
+            FieldInfo fi = AccessTools.Field(typeof(SectionLayer_EdgeShadows), "Shadowed");
+
+            List<CodeInstruction> instructionList = instructions.ToList();
+
+            for (int index = 0; index < instructionList.Count; index++)
             {
-                GenDraw.DrawRadiusRing(this.StrikeLoc, DebugMod.Instance.Settings.radius, DebugMod.Instance.Settings.color);
+                CodeInstruction instruction = instructionList[index];
+                yield return instruction;
+                if (instruction.LoadsField(fii) && instructionList[index+2].Calls(AccessTools.Method(typeof(List<Color32>), "Add")))
+                {
+                    yield return new CodeInstruction(OpCodes.Ldsfld, AccessTools.Field(typeof(RWDebug), nameof(Test)));
+                    index++;
+                }
             }
         }
     }
-
-    public class DebugModSettings : ModSettings
-    {
-        public bool  showMiddleMap = true;
-        public float radius        = 2f;
-        public Color color         = Color.white;
-        public override void ExposeData()
-        {
-            base.ExposeData();
-            Scribe_Values.Look(ref this.showMiddleMap, nameof(this.showMiddleMap), true);
-            Scribe_Values.Look(ref this.radius,        nameof(this.radius), 2f);
-
-            Scribe_Values.Look(ref this.color,         nameof(this.color), Color.white);
-        }
-    }
-
-    public class DebugMod : Mod
-    {
-        public static DebugMod Instance { get; private set; }
-        private DebugModSettings settings;
-
-        public DebugModSettings Settings
-        {
-            get => this.settings ??= this.GetSettings<DebugModSettings>();
-        }
-
-        public override string SettingsCategory() => "Middle of the Map Marker";
-
-        public DebugMod(ModContentPack content) : base(content) => 
-            Instance = this;
-
-        public override void DoSettingsWindowContents(Rect inRect)
-        {
-            base.DoSettingsWindowContents(inRect);
-
-            Listing_Standard listingStandard = new Listing_Standard();
-            listingStandard.Begin(inRect);
-            listingStandard.CheckboxLabeled("Show middle", ref this.Settings.showMiddleMap);
-            this.Settings.radius = listingStandard.SliderLabeled("radius", this.Settings.radius, 0.25f, 10f);
-            listingStandard.Gap(20f);
-            listingStandard.Label("Color");
-            Widgets.DrawBoxSolid(listingStandard.GetRect(50f), this.Settings.color);
-            
-            if (listingStandard.ButtonText("Change Color"))
-            {
-                Find.WindowStack.Add(new Dialog_ColorPickerMiddleOfMap());
-            }
-            
-            listingStandard.End();
-        }
-    }
-
-    public class Dialog_ColorPickerMiddleOfMap : Dialog_ColorPickerBase
-    {
-        public Dialog_ColorPickerMiddleOfMap() : base(Widgets.ColorComponents.All, Widgets.ColorComponents.All)
-        {
-            this.oldColor = DebugMod.Instance.Settings.color;
-            this.color = this.oldColor;
-        }
-
-        public override Vector2 InitialSize { get; } = new Vector2(600f, 500f);
-
-        protected override void        SaveColor(Color color)
-        {
-            DebugMod.Instance.Settings.color = color;
-        }
-
-        protected override bool        ShowDarklight           => true;
-        protected override Color       DefaultColor            => this.oldColor;
-
-        protected override List<Color> PickableColors { get; } =
-            Enumerable.Range(0, 1).SelectMany(r => Enumerable.Range(10, 1).SelectMany(g => Enumerable.Range(0, 11).Select(b => Color.HSVToRGB(r++ / 10f, g-- / 10f, b / 10f)))).ToList();
-        protected override float ForcedColorValue
-        {
-            get
-            {
-                Color.RGBToHSV(this.color, out _, out _, out float v);
-                return v;
-            }
-        }
-
-        protected override bool  ShowColorTemperatureBar => true;
-    }
-
 
     public class DummyDef : ThingDef
     {
